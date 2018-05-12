@@ -1,7 +1,7 @@
 ---
-title: "Think about it"
+title: "Study on the Relationship Between MPG and Transmission Type"
 author: "Silva, RAFAEL"
-date: "May 7, 2018"
+date: "May 12, 2018"
 output:
   html_document:
     keep_md: yes
@@ -17,19 +17,25 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This section presents all the libraries used during the project.
 
-```{r}
-
+```{r, message=FALSE}
+library(ggplot2)
+library(PerformanceAnalytics)
 ```
 
 ## Executive Summary
 
-** write here **
+This project looks into the *mtcars* dataset, with the objective of answering whether automatic or manual transmission is better for consumption in MPG and to quantify this difference.
+
+Although in a direct comparison between automatic and and manual transmission the manual transmission is better in ```r round(coef(lm0)[2], 2)``` miles per gallon, when the influence of other correlated variables is considered, the data fails to reject the hypothesis of both transmissions having the same mpg with a P-Value of ```r round(summary(lmf)$coef[2, 4], 2)```.
 
 ## Introduction
 
-This project looks into the *mtcars* dataset, with the objective of answering whether automatic or manual transmission is better for consumption in MPG and to quantify this difference.
+The Motor Trend, a magazine about the automobile industry, is are interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome). They are particularly interested in the following two questions:
 
-The code chunk bellow loads the dataset into the working directory. The datset documentation is available [here](http://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html) or by typing **?mtcars** into R console.
+1. "Is an automatic or manual transmission better for MPG"
+1. "Quantify the MPG difference between automatic and manual transmissions"
+
+The code chunk bellow loads the dataset into the work space. The dataset documentation is available [here](http://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html) or by typing **?mtcars** into R console.
 
 ```{r}
 data("mtcars")
@@ -37,16 +43,68 @@ data("mtcars")
 
 ## Exploratory Analysis
 
-** write here **
+In order to better understand the data, a box plot was made showing how the mpg is distributed for each kind of transmission (Appendix A). The box plot makes it fairly obvious that there is a big difference in mpg on each kind of transmission.
+
+Although helpful as an initial hunch, the box plot is not enough to take any conclusions on which kind of transmission is better regarding mpg. By isolating these 2 variables the results are possibly biased due to the omission of other correlated variables in the dataset.
+
+The correlation chart (Appendix B) shows which of the other variables available in the dataset may introduce bias in the results of a direct comparison between both types of transmission. For instance, there is a significant correlation between the displacement and the transmission type, the negative correlation coefficient shows that the average displacement for the automatic cars in the dataset is bigger than for the manual cars. On the other hand, there is a negative correlation between the mpg and the displacement, which means that, as displacement gets higher the mpg gets lower. This means that, at least part of the difference in mpg of both transmission types may be due to the manual cars of the dataset having a smaller engine.
 
 ## Regression Models
 
-** write here **
+The first thing to consider when comparing the effect of the transmission type is a direct comparison in mpg between both types, the results of this comparison is shown by the chunk bellow.
+
+```{r}
+mtcars$amfac <- factor(mtcars$am, labels = c("automatic", "manual"))
+lm0 <- lm(mpg ~ amfac, data = mtcars)
+summary(lm0)$coef
+```
+
+The result of such comparison is that cars with manual transmission make on average ```r round(coef(lm0)[2], 2)``` more miles per gallon than an automatic car as shown above.
+
+However, as explained in the last section, this result may be biased by the influence of other variables. With the information gathered in the the exploratory analysis, an strategy was defined to select the best model for this comparison. Several nested models where fitted in the chunk bellow, one by one adding the variables that have a significant correlation with both mpg and am (minimum significance 0.05 = "*"), and then a final model with the rest of the variables where also fitted to show for the sake of testing the significance of the rest of the variables. An analysis of variance was made on all the models to which one is the best.
+
+```{r}
+lm1 <- lm(mpg ~ amfac + gear, data = mtcars)
+lm2 <- lm(mpg ~ amfac + gear + drat, data = mtcars)
+lm3 <- lm(mpg ~ amfac + gear + drat + wt, data = mtcars)
+lm4 <- lm(mpg ~ amfac + gear + drat + wt + disp, data = mtcars)
+lm5 <- lm(mpg ~ amfac + gear + drat + wt + disp + cyl, data = mtcars)
+lm6 <- lm(mpg ~ ., data = mtcars)
+```
+
+The results of the analysis of variance (Appendix C) on the models show that the only additions that where significant to the models were the rear axle ration (drat), the weight (wt), and the number of cylinders (cyl). The chunk bellow creates a final with the mentioned variables and prints its coefficients.
+
+```{r}
+lmf <- lm(mpg ~ amfac + drat + wt + cyl, data = mtcars)
+summary(lmf)$coef
+```
 
 ## Conclusion
 
-** write here **
+Based on the results of the regression model, it was concluded that although in a direct comparison between automatic and and manual transmission the manual transmission is better in ```r round(coef(lm0)[2], 2)``` miles per gallon, when the influence of other correlated variables is considered, the data fails to reject the hypothesis of both transmissions having the same mpg with a P-Value of ```r round(summary(lmf)$coef[2, 4], 2)```.
 
 \pagebreak
 
-## Apendix
+## Appendix A
+
+```{r}
+qplot(factor(mtcars$am, labels = c("automatic", "manual")), mpg, data = mtcars, geom = "boxplot", 
+      xlab = "Transmission", ylab = "Miles/(US) gallon",
+      main = "MPG vs. Transmission Type")
+```
+
+\pagebreak
+
+## Appendix B
+
+```{r}
+chart.Correlation(mtcars[,1:11])
+```
+
+\pagebreak
+
+## Appendix C
+
+```{r}
+anova(lm0, lm1, lm2, lm3, lm4, lm5, lm6)
+```
